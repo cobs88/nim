@@ -2,7 +2,7 @@ import os
 import time
 
 def make_piles():
-    piles = [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60]
+    piles = [1, 3, 5, 7]
     return piles
 
 def display_piles(piles):
