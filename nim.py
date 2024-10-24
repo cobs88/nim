@@ -1,130 +1,47 @@
-import os
-import time
-
-def make_piles():
-    piles = [1, 3, 5, 7]
-    return piles
-
-def display_piles(piles):
-    os.system('clear')
-    for i, pile in enumerate(piles):
-        print(f"Pile {i + 1 if i + 1 >= 10 else ' ' + str(i + 1)}:", end=" ")
-        print("|"*pile)
-    print("\n")
-
-def is_game_over(piles):
-    return all(pile == 0 for pile in piles)
-
-def calculate_nim_sum(piles):
-    nim_sum = 0
-    for pile in piles:
-        nim_sum ^= pile
-    return nim_sum
-
-
-def ai_move(piles):
-    nim_sum = calculate_nim_sum(piles)
-
-    non_empty_piles = [pile for pile in piles if pile > 0]
-    if len(non_empty_piles) == 2 and 1 in non_empty_piles:
-        index_one = piles.index(1)
-        index_other = piles.index(non_empty_piles[0] if non_empty_piles[1] == 1 else non_empty_piles[1])
-        
-        amount_to_remove = piles[index_other]
-
-        return index_other, amount_to_remove
-
-    if len(non_empty_piles) == 1:
-        index_one = piles.index(non_empty_piles[0])
-
-        amount_to_remove = non_empty_piles[0] - 1
-
-        return index_one, amount_to_remove
-
-
-
-    for i in range(len(piles)):
-        target = piles[i] ^ nim_sum
-        if target < piles[i]:
-            amount_to_remove = piles[i] - target
-            return i, amount_to_remove
-
-    for i in range(len(piles)):
-        if piles[i] > 0:
-            return i, 1
-
-def game_loop(gamemode):
-    player = 1
-
-    piles = make_piles()
-
+import os, time, random
+make_piles = lambda: [1, 3, 5, 7]
+display_piles = lambda piles: os.system('clear') or [print(f"Pile {i+1}: " + "|"*pile) for i, pile in enumerate(piles)] or print("\n")
+is_game_over = lambda piles: all(pile == 0 for pile in piles)
+calculate_nim_sum = lambda piles: sum([nim_sum := nim_sum ^ pile for pile in piles] or [nim_sum := 0])
+random_move = lambda piles: (chosen := random.choice([i for i, pile in enumerate(piles) if pile > 0]), random.randint(1, piles[chosen]))
+best_move = lambda piles: next(((i, piles[i] - (target := piles[i] ^ (nim_sum := calculate_nim_sum(piles)))) for i in range(len(piles)) if target < piles[i]), next((i, 1) for i in range(len(piles)) if piles[i] > 0))
+ai_move = lambda piles, ai_difficulty: best_move(piles) if random.randint(ai_difficulty, 5) == 5 else random_move(piles)
+def game_loop(gamemode, p1, p2, ai_diff=5):
+    piles, player = make_piles(), 1
     while not is_game_over(piles):
-        display_piles(piles)
-        nim_sum = calculate_nim_sum(piles)
-
-        if gamemode == None: print(f"Player {player}'s turn!\n")
-        valid_move = False
-        
-        while not valid_move:
-            if gamemode == None or gamemode == "ai" and player == 1:
-                if gamemode == "ai": print("Player's Turn!\n")
+        display_piles(piles); current_player = p1 if player == 1 else p2
+        if gamemode == None: print(f"{current_player}'s turn!\n")
+        valid = False
+        while not valid:
+            if gamemode == None or (gamemode == "ai" and player == 1):
+                if gamemode == "ai": print(f"{p1}'s Turn!\n")
                 try:
-                    chosen_pile = int(input(f"Choose a pile number 1 to {len(piles)}: ")) - 1
-                    print("\n")
-                    if chosen_pile < 0 or chosen_pile > int(len(piles)) or piles[chosen_pile] <= 0:
-                        print("Invalid pile number. Try again.\n")
-                        time.sleep(1)
-                        break
-
-                    num_to_remove = int(input(f"How many objects to remove from pile {chosen_pile + 1}? "))
-
-                    if num_to_remove < 1 or num_to_remove > piles[chosen_pile]:
-                        print(f"\nInvalid number. You can remove 1 to {piles[chosen_pile]} objects.\n")
-                        time.sleep(1)
-                        break
-
-                    else:
-                        piles[chosen_pile] -= num_to_remove
-                        valid_move = True
-
-                        player = 2 if player == 1 else 1
-
-                except (ValueError, IndexError):
-                    print("\nInvalid input. Please enter numbers only.\n")
-
+                    pile = int(input(f"Choose a pile 1-{len(piles)}: ")) - 1; print("\n")
+                    if pile < 0 or pile >= len(piles) or piles[pile] <= 0: print("Invalid pile.\n"); time.sleep(1); break
+                    remove = int(input(f"How many to remove from pile {pile + 1}? "))
+                    if remove < 1 or remove > piles[pile]: print(f"\nInvalid. Can remove 1 to {piles[pile]}.\n"); time.sleep(1); break
+                    else: piles[pile] -= remove; valid = True; player = 2 if player == 1 else 1
+                except (ValueError, IndexError): print("\nInvalid input.\n")
             elif gamemode == "ai" and player == 2:
-                print("AI's turn!\n")
-                chosen_pile, num_to_remove = ai_move(piles)
-                time.sleep(1)
-                if chosen_pile is not None:
-                    piles[chosen_pile] -= num_to_remove
-                    print(f"AI removed {num_to_remove} objects from pile {chosen_pile + 1}.\n")
-                    player = 2 if player == 1 else 1
-                    valid_move = True
+                print("AI's turn!\n"); pile, remove = ai_move(piles, ai_diff); time.sleep(1)
+                if pile is not None: piles[pile] -= remove; print(f"AI removed {remove} from pile {pile + 1}.\n"); player = 2 if player == 1 else 1; valid = True
                 time.sleep(2)
     display_piles(piles)
-    
-    if gamemode == "ai" and player == 2: print("You lost to the ai!\n")
-    elif gamemode == "ai" and player == 1: print("Congratulations, you beat the ai!\n")
-    else: print(f"Player {player} won!\n")
-    print("Returning to menu...\n")
-    time.sleep(4)
-    os.system('clear')
-
+    if gamemode == "ai" and player == 2: print(f"{p1}, you lost to the AI!\n")
+    elif gamemode == "ai" and player == 1: print(f"Congrats, {p1}, you beat the AI!\n")
+    else: print(f"{p2 if player == 2 else p1} won!\n")
+    print("Returning...\n"); time.sleep(3); os.system('clear')
 def main():
-    print("Welcome to nim!\n")
-    time.sleep(1)
-
-    selected_mode = None
-    while selected_mode == None:
-        choice = input("Would you like to play (l)ocally or against (ai)? ")
-
-        if choice in ['l', 'local', 'locally']:
-            game_loop(None)
-        elif choice in ['a', 'ai']:
-            game_loop("ai")
-        else:
-            print("\nThats not a valid choice!\n")
-            time.sleep(1)
-os.system('clear')
-main()
+    print("Welcome to Nim!\n"); time.sleep(1)
+    p1 = input("Enter Player 1's name: ").strip()
+    while True:
+        choice = input(f"\nPlay (l)ocally or against (ai), {p1}? ").lower()
+        if choice in ['l', 'local']: p2 = input("\nEnter Player 2's name: ").strip(); game_loop(None, p1, p2)
+        elif choice == 'ai':
+            p2 = "AI"
+            while True: 
+                diff = int(input("\nSelect AI difficulty [1 - 5(hard)]: "))
+                if 1 <= diff <= 5: game_loop("ai", p1, p2, diff); break
+                else: print("Invalid.\n")
+        else: print("Invalid choice!\n"); time.sleep(1)
+os.system('clear'); main()
